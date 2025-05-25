@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Cluedo Web Game - Mystery Mansion Definitivo</title>
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    /* Stili generali */
+    body {
+      background: #f8f9fa;
+      padding-top: 20px;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    /* Canvas del tabellone: centrato */
+    #boardCanvas {
+      background: #fff;
+      border: 2px solid #000;
+      display: block;
+      margin: 0 auto 20px auto;
+    }
+    /* Pannello dei comandi: posizionato sotto il canvas */
+    #controlPanel {
+      border: 2px solid #000;
+      border-radius: 5px;
+      background: #fff;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    #currentTurn, #playerInfo {
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    #log {
+      background: #e9ecef;
+      border: 1px solid #ced4da;
+      height: 150px;
+      overflow-y: auto;
+      padding: 10px;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+    /* Sezioni Notepad e Carte in Mano affiancate */
+    #notepadCardsWrapper {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+    #notepadSection, #cardsPanel {
+      flex: 1;
+    }
+    /* Centrare il canvas */
+    #canvasWrapper { text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Cluedo Web Game - Mystery Mansion Definitivo</h1>
+    <!-- Tabellone: Canvas -->
+    <div id="canvasWrapper" class="mb-3">
+      <canvas id="boardCanvas" width="800" height="600"></canvas>
+    </div>
+    <!-- Pannello dei comandi -->
+    <div id="controlPanel">
+      <div id="currentTurn" class="alert alert-info"></div>
+      <div id="playerInfo"></div>
+      <div class="mb-2">
+        <button id="moveBtn" class="btn btn-primary btn-block">Muovi</button>
+        <button id="suggestBtn" class="btn btn-warning btn-block" disabled>Effettua Suggerimento</button>
+        <button id="accuseBtn" class="btn btn-danger btn-block">Accusa Finale</button>
+        <button id="endTurnBtn" class="btn btn-secondary btn-block mt-2" disabled>Fine Turno</button>
+        <button id="helpBtn" class="btn btn-info btn-block mt-2">Help</button>
+        <button id="newGameBtn" class="btn btn-success btn-block mt-2">Nuova Partita</button>
+      </div>
+      <div id="notepadCardsWrapper" class="mb-2 d-flex flex-wrap">
+        <div id="notepadSection" class="flex-fill">
+          <h5>Notepad</h5>
+          <div>
+            <strong>Sospetti:</strong>
+            <div id="notepadSuspects"></div>
+          </div>
+          <div>
+            <strong>Armi:</strong>
+            <div id="notepadWeapons"></div>
+          </div>
+          <div>
+            <strong>Stanze:</strong>
+            <div id="notepadRooms"></div>
+          </div>
+        </div>
+        <div id="cardsPanel" class="flex-fill">
+          <h5>Carte in Mano</h5>
+          <div id="cardsContainer" class="d-flex flex-wrap"></div>
+        </div>
+      </div>
+      <div id="log"></div>
+    </div>
+  </div>
+
+  <!-- Modal: Movimento -->
+  <div class="modal fade" id="moveModal" tabindex="-1" role="dialog" aria-labelledby="moveModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Scegli la Stanza in cui Muoverti</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Chiudi">
+            <span>&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <ul id="roomList" class="list-group"></ul>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="moveConfirm" class="btn btn-primary">Muovi</button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Annulla</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Suggerimento -->
+  <div class="modal fade" id="suggestModal" tabindex="-1" role="dialog" aria-labelledby="suggestModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Effettua Suggerimento</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Chiudi">
+            <span>&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="suggestForm">
+            <div class="form-group">
+              <label for="suspectSelect">Sospetto</label>
+              <select id="suspectSelect" class="form-control"></select>
+            </div>
+            <div class="form-group">
+              <label for="weaponSelect">Arma</label>
+              <select id="weaponSelect" class="form-control"></select>
+            </div>
+            <div class="form-group">
+              <label for="currentRoom">Stanza (attuale)</label>
+              <input type="text" id="currentRoom" class="form-control" readonly>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="suggestConfirm" class="btn btn-warning">Suggerisci</button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Annulla</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Accusa Finale -->
+  <div class="modal fade" id="accuseModal" tabindex="-1" role="dialog" aria-labelledby="accuseModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Accusa Finale</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Chiudi">
+            <span>&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="accuseForm">
+            <div class="form-group">
+              <label for="accuseSuspect">Sospetto</label>
+              <select id="accuseSuspect" class="form-control"></select>
+            </div>
+            <div class="form-group">
+              <label for="accuseWeapon">Arma</label>
+              <select id="accuseWeapon" class="form-control"></select>
+            </div>
+            <div class="form-group">
+              <label for="accuseRoom">Stanza</label>
+              <select id="accuseRoom" class="form-control"></select>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="accuseConfirm" class="btn btn-danger">Accusa</button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Annulla</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Help -->
+  <div class="modal fade" id="helpModalMain" tabindex="-1" role="dialog" aria-labelledby="helpModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Istruzioni e Regolamento</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Chiudi">
+            <span>&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <h5>Overview</h5>
+          <p>In Cluedo devi scoprire chi ha commesso l’omicidio, con quale arma e in quale stanza della villa.</p>
+          <h5>Preparazione</h5>
+          <ul>
+            <li>Scegli il numero di detective (minimo 3, massimo 6) e inserisci i loro nomi. Ogni detective riceverà casualmente un sospetto insieme al colore per la pedina.</li>
+            <li>La plancia rappresenta la villa ed è divisa nelle seguenti 9 stanze: Studio, Hall, Salone, Biblioteca, Sala da Billardo, Conservatorio, Sala da Ballo, Sala da Pranzo, Cucina.</li>
+            <li>All’avvio vengono estratte una carta sospetto, una carta arma e una carta stanza per formare la soluzione segreta (nascosta ai detective). Le altre carte vengono distribuite tra i detective.</li>
+          </ul>
+          <h5>Gameplay</h5>
+          <ul>
+            <li>Nel turno, il detective corrente **deve prima cliccare su "Muovi"** e selezionare la stanza (tramite il modal "Muovi").</li>
+            <li>Dopo il movimento, il detective può scegliere di fare un suggerimento (cliccando "Effettua Suggerimento", che apre il modal "Suggerimento") oppure terminare il turno cliccando "Fine Turno".</li>
+            <li>Se il detective effettua un suggerimento, il turno si conclude automaticamente quando si conferma il suggerimento.</li>
+            <li>Quando sei convinto della soluzione, clicca su "Accusa Finale" e compila il modulo: se l'accusa è corretta vinci, altrimenti verrai eliminato.</li>
+          </ul>
+          <h5>Notepad e Carte in Mano</h5>
+          <ul>
+            <li>Usa il notepad per annotare sospetti, armi e stanze escluse dalle tue ipotesi.</li>
+            <li>Consulta l'area "Carte in Mano" per vedere le carte a tua disposizione.</li>
+          </ul>
+          <p><em>Buon divertimento e che il miglior detective vinca!</em></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Chiudi</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Bootstrap & jQuery Scripts -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  
+  <!-- Includi il file principale JavaScript -->
+  <script src="main.js"></script>
+</body>
+</html>
