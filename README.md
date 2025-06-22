@@ -49,3 +49,5 @@ Welcome to the **Monopoly Web Game**, an online adaptation of the **legendary bo
 🔹 Buy, trade, build, and **win the economy battle!**  
 
 🔥 Ready to **become a property tycoon**? Let’s play! 🏠💰  
+
+#### License: GPLv3
